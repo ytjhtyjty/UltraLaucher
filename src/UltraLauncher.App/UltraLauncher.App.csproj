@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>UltraLauncher</AssemblyName>
+    <RootNamespace>UltraLauncher.App</RootNamespace>
+    <ApplicationIcon>..\..\assets\ultralauncher.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UltraLauncher.Core\UltraLauncher.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\assets\ultralauncher.png" Link="Assets\ultralauncher.png" />
+    <Resource Include="..\..\assets\ultralauncher.ico" Link="Assets\ultralauncher.ico" />
+  </ItemGroup>
+
+</Project>

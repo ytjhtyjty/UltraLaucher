@@ -1,0 +1,107 @@
+<UserControl x:Class="UltraLauncher.App.Views.DownloadsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UltraLauncher.App.Controls"
+             x:Name="Page">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+        <StackPanel Margin="{StaticResource PagePadding}">
+            <TextBlock Text="Установка и загрузки" Style="{StaticResource PageTitle}" />
+            <TextBlock Style="{StaticResource MutedText}" Margin="0,0,0,20"
+                       Text="Файлы скачиваются с серверов Mojang и проверяются по SHA-1. Прерванная установка продолжается с места остановки, уже проверенные файлы повторно не скачиваются." />
+
+            <controls:OperationPanel DataContext="{Binding Operation}" />
+
+            <!-- Установка версии -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Установить версию" Style="{StaticResource SectionTitle}" />
+                    <WrapPanel>
+                        <ComboBox ItemsSource="{Binding Catalog.Visible}" SelectedItem="{Binding SelectedToInstall}" Width="320" MaxDropDownHeight="360"
+                                  Margin="0,0,10,8" AutomationProperties.Name="Версия для установки">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Id}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" />
+                                        <TextBlock Text="{Binding TypeText}" Foreground="{StaticResource MutedBrush}" Margin="10,0,0,0" />
+                                        <TextBlock Text="{Binding DateText}" Foreground="{StaticResource MutedBrush}" Margin="10,0,0,0" />
+                                        <TextBlock Text="установлена" Margin="10,0,0,0" Foreground="{StaticResource AccentBrush}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Content="Установить" Style="{StaticResource PrimaryButton}" Command="{Binding InstallCommand}" Margin="0,0,10,8"
+                                ToolTip="{Binding BusyReason}" />
+                        <Button Content="Открыть папку игры" Command="{Binding OpenGameFolderCommand}" Margin="0,0,0,8" />
+                    </WrapPanel>
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="12">
+                        <Run Text="Папка игры:" /> <Run Text="{Binding GameDirectory, Mode=OneWay}" Foreground="{StaticResource TextBrush}" />
+                    </TextBlock>
+                    <TextBlock Text="{Binding Catalog.SourceNotice}" Foreground="{StaticResource WarningBrush}" Style="{StaticResource BaseText}" FontSize="13" Margin="0,6,0,0"
+                               Visibility="{Binding Catalog.SourceNotice, Converter={StaticResource NullToVis}}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Установленные версии -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Установленные версии" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="Пока ничего не установлено." Style="{StaticResource MutedText}"
+                               Visibility="{Binding Installed.Count, Converter={x:Static controls:ZeroToVisible.Instance}}" />
+                    <ItemsControl ItemsSource="{Binding Installed}" Style="{StaticResource PlainList}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Id}" Style="{StaticResource BaseText}" FontWeight="SemiBold" FontSize="15" />
+                                                <Border Style="{StaticResource Badge}" Margin="10,0,0,0">
+                                                    <TextBlock Text="{Binding StateText}" FontSize="11">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsComplete}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Details}" Style="{StaticResource MutedText}" FontSize="12" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Command="{Binding DataContext.RepairCommand, ElementName=Page}" CommandParameter="{Binding}" Margin="0,0,8,0"
+                                                    ToolTip="Пересчитать хеши всех файлов и скачать повреждённые/отсутствующие" AutomationProperties.Name="Проверить и восстановить">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="{StaticResource IconWrench}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="Uniform" />
+                                                    <TextBlock Text="Проверить" Margin="8,0,0,0" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding DataContext.OpenVersionFolderCommand, ElementName=Page}" CommandParameter="{Binding}" Margin="0,0,8,0"
+                                                    ToolTip="Открыть папку версии" AutomationProperties.Name="Открыть папку версии">
+                                                <Path Data="{StaticResource IconFolder}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="Uniform" />
+                                            </Button>
+                                            <Button Style="{StaticResource DangerButton}" Command="{Binding DataContext.DeleteCommand, ElementName=Page}" CommandParameter="{Binding}"
+                                                    ToolTip="Удалить файлы версии (миры и настройки сохранятся)" AutomationProperties.Name="Удалить файлы версии">
+                                                <Path Data="{StaticResource IconTrash}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="Uniform" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,10,0,0"
+                               Text="Удаление затрагивает только папку versions\&lt;версия&gt;. Миры (saves), скриншоты, ресурспаки, options.txt и общие библиотеки/ассеты не удаляются никогда." />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

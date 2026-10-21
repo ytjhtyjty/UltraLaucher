@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UltraLauncher.App/UltraLauncher.App.csproj" />
+    <Project Path="src/UltraLauncher.Core/UltraLauncher.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UltraLauncher.Tests/UltraLauncher.Tests.csproj" />
+  </Folder>
+</Solution>
