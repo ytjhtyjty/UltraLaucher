@@ -23,6 +23,7 @@ public class GameServiceTests
         public GameService Game { get; }
         public SettingsService Settings { get; }
         public AccountStore Store { get; }
+        public AccountService Accounts { get; }
         public FakeHttpHandler Http { get; }
         public GameDirectoryLayout Layout { get; }
 
@@ -42,6 +43,7 @@ public class GameServiceTests
             var guard = new OperationGuard();
             var accounts = new AccountService(() => throw new InvalidOperationException("MSAL не должен вызываться"),
                 new XboxMinecraftClient(http, log), Store, log, guard);
+            Accounts = accounts;
             var downloader = new Downloader(http, new FileVerifier(), log);
             Game = new GameService(Settings, new VersionManifestService(http, Paths.ManifestCacheFile, log),
                 new VersionInstaller(http, downloader, log, PlatformInfo.Current, "test"),
@@ -92,6 +94,36 @@ public class GameServiceTests
         using var env = new Env();
         var ex = await Assert.ThrowsAsync<LauncherException>(() => env.Game.PlayAsync("fake-1", offline: true, null, CancellationToken.None));
         Assert.Equal(ErrorCode.AccountRequired, ex.Code);
+    }
+
+    [Fact]
+    public async Task LocalAccount_WithoutMicrosoft_CanReachOfflineInstallationCheck()
+    {
+        using var env = new Env();
+        var account = env.Accounts.CreateLocalAccount("Steve");
+        env.Settings.Update(s => s.SelectedAccountId = account.Id);
+        var ex = await Assert.ThrowsAsync<LauncherException>(() =>
+            env.Game.PlayAsync("missing-version", offline: true, null, CancellationToken.None));
+        Assert.Equal(ErrorCode.NotInstalled, ex.Code);
+        Assert.Equal(0, env.Http.TotalRequests);
+    }
+
+    [Fact]
+    public async Task LocalAccount_StartsInstalledVersionWithoutMicrosoftOrNetwork()
+    {
+        var jdk = FindJdk(25) ?? FindJdk(21);
+        if (jdk is null) return; // как и существующие проверки процесса, требует Windows/JDK
+        var major = JavaDetector.Inspect(jdk)!.MajorVersion;
+        using var env = new Env(requiredJava: major);
+        var account = env.Accounts.CreateLocalAccount("Steve");
+        env.Settings.Update(s => s.SelectedAccountId = account.Id);
+        env.SetJava(jdk);
+        foreach (var offline in new[] { false, true })
+        {
+            using var session = await env.Game.PlayAsync("fake-1", offline, null, CancellationToken.None);
+            await session.Exited.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+        Assert.Equal(0, env.Http.TotalRequests);
     }
 
     [Fact]

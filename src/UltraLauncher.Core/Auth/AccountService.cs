@@ -12,6 +12,8 @@ public enum AccountStatus
     Licensed,
     /// <summary>Вход выполнен, но Minecraft Java Edition не куплен — доступна только демо-версия.</summary>
     DemoOnly,
+    /// <summary>Локальный профиль без Microsoft.</summary>
+    Local,
 }
 
 /// <summary>Сценарии работы с аккаунтами: вход, обновление, выход, данные игрока для запуска.</summary>
@@ -40,7 +42,42 @@ public sealed class AccountService
 
     public StoredAccount? Find(string? id) => _store.Find(id);
 
-    public static AccountStatus StatusOf(StoredAccount a) => a.OwnsGame ? AccountStatus.Licensed : AccountStatus.DemoOnly;
+    public static AccountStatus StatusOf(StoredAccount a) => a.IsLocal ? AccountStatus.Local
+        : a.OwnsGame ? AccountStatus.Licensed : AccountStatus.DemoOnly;
+
+    public static bool IsValidLocalName(string? name)
+    {
+        var value = name?.Trim();
+        return value is { Length: >= 3 and <= 16 }
+            && value.All(c => c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_');
+    }
+
+    /// <summary>Создаёт локальный профиль без Client ID, MSAL и сетевых запросов.</summary>
+    public StoredAccount CreateLocalAccount(string? name)
+    {
+        if (!IsValidLocalName(name))
+            throw new LauncherException(ErrorCode.InvalidSettings,
+                "Некорректный ник офлайн-аккаунта.", "Используйте 3–16 латинских букв, цифр или символов подчёркивания.");
+        using var operation = _guard.Begin("auth:local", "Офлайн-аккаунт уже создаётся.");
+        var normalized = name!.Trim();
+        var existing = Accounts.FirstOrDefault(a => a.IsLocal
+            && string.Equals(a.MinecraftName, normalized, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null) return existing;
+
+        // Java UUID.nameUUIDFromBytes("OfflinePlayer:" + name): порядок байтов — как в Minecraft.
+        var hash = MD5.HashData(Encoding.UTF8.GetBytes("OfflinePlayer:" + normalized));
+        hash[6] = (byte)((hash[6] & 0x0f) | 0x30);
+        hash[8] = (byte)((hash[8] & 0x3f) | 0x80);
+        var uuid = Convert.ToHexStringLower(hash);
+        var account = new StoredAccount
+        {
+            Id = "offline:" + uuid, IsLocal = true,
+            MinecraftName = normalized, MinecraftUuid = uuid,
+        };
+        _store.Upsert(account);
+        _log.Info("Accounts", $"Создан офлайн-аккаунт {normalized}");
+        return account;
+    }
 
     public async Task<StoredAccount> SignInAsync(CancellationToken ct)
     {
@@ -56,6 +93,7 @@ public sealed class AccountService
     /// <summary>Повторно проверяет аккаунт онлайн (обновляет токены и право на игру).</summary>
     public async Task<StoredAccount> RefreshAsync(string accountId, CancellationToken ct)
     {
+        if (Find(accountId) is { IsLocal: true } local) return local;
         using var operation = _guard.Begin("auth:refresh:" + accountId, "Обновление аккаунта уже выполняется.");
         var identity = _identityFactory();
         var ms = await identity.AcquireSilentAsync(accountId, ct).ConfigureAwait(false)
@@ -67,7 +105,8 @@ public sealed class AccountService
     {
         try
         {
-            await _identityFactory().RemoveAsync(accountId).ConfigureAwait(false);
+            if (Find(accountId) is not { IsLocal: true })
+                await _identityFactory().RemoveAsync(accountId).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -79,12 +118,19 @@ public sealed class AccountService
 
     /// <summary>
     /// Данные игрока для запуска. Онлайн — с актуальным токеном (обновляется при необходимости).
-    /// Офлайн — только для аккаунта, у которого ранее подтверждено право на игру.
+    /// Локальный профиль не использует Microsoft. Для Microsoft офлайн нужно ранее подтверждённое право на игру.
     /// </summary>
     public async Task<PlayerIdentity> GetPlayerAsync(string? accountId, bool offline, CancellationToken ct)
     {
         var account = Find(accountId) ?? throw new LauncherException(ErrorCode.AccountRequired,
-            "Для запуска нужен аккаунт Microsoft.", "Войдите на вкладке «Аккаунты».");
+            "Для запуска нужен аккаунт.", "Создайте офлайн-аккаунт или войдите через Microsoft на вкладке «Аккаунты».");
+
+        if (account.IsLocal)
+        {
+            if (!account.HasProfile)
+                throw new LauncherException(ErrorCode.AuthNoProfile, "Офлайн-профиль повреждён.", "Удалите его и создайте заново.");
+            return new PlayerIdentity(account.MinecraftName!, account.MinecraftUuid!, "0", "0", "legacy", IsDemo: false);
+        }
 
         if (offline)
         {

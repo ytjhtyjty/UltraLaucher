@@ -32,7 +32,7 @@ public sealed partial class HomeViewModel : ObservableObject
     [ObservableProperty] private string? _playBlockReason;
     [ObservableProperty] private string? _playNote;
     [ObservableProperty] private string _accountName = "Аккаунт не выбран";
-    [ObservableProperty] private string _accountStatus = "Войдите через Microsoft на вкладке «Аккаунты»";
+    [ObservableProperty] private string _accountStatus = "Создайте офлайн-аккаунт или войдите через Microsoft";
     [ObservableProperty] private bool _hasAccount;
 
     public string SupportedRange => VersionSupport.RangeDescription;
@@ -71,21 +71,22 @@ public sealed partial class HomeViewModel : ObservableObject
         if (account is null)
         {
             AccountName = "Аккаунт не выбран";
-            AccountStatus = "Войдите через Microsoft на вкладке «Аккаунты»";
+            AccountStatus = "Создайте офлайн-аккаунт или войдите через Microsoft на вкладке «Аккаунты»";
         }
         else
         {
             AccountName = account.DisplayName;
-            AccountStatus = AccountService.StatusOf(account) == UltraLauncher.Core.Auth.AccountStatus.Licensed
+            AccountStatus = account.IsLocal ? "Офлайн-аккаунт — без авторизации Microsoft"
+                : AccountService.StatusOf(account) == UltraLauncher.Core.Auth.AccountStatus.Licensed
                 ? "Лицензия Minecraft: Java Edition подтверждена"
                 : "Игра не куплена — доступна только демо-версия";
         }
 
         var version = SelectedVersion;
-        // Офлайн-режим: только для подтверждённой лицензии и полностью установленной версии.
+        // Без сети: локальный профиль или подтверждённая лицензия, версия уже установлена.
         string? offlineReason = null;
-        if (account is null) offlineReason = "Нужен аккаунт, который ранее входил онлайн.";
-        else if (!account.OwnsGame) offlineReason = "Офлайн-режим доступен только при подтверждённой покупке игры.";
+        if (account is null) offlineReason = "Создайте офлайн-аккаунт или войдите через Microsoft.";
+        else if (!account.IsLocal && !account.OwnsGame) offlineReason = "Офлайн-режим доступен только при подтверждённой покупке игры.";
         else if (version is null) offlineReason = "Выберите версию.";
         else if (!_core.Game.IsReadyOffline(version.Id, out var reason)) offlineReason = reason + " Сначала установите версию онлайн.";
         CanUseOffline = offlineReason is null;
@@ -96,13 +97,13 @@ public sealed partial class HomeViewModel : ObservableObject
         if (Operation.IsActive) block = "Дождитесь завершения текущей операции.";
         else if (_shell.IsGameRunning) block = "Игра уже запущена.";
         else if (version is null) block = Catalog.IsLoading ? "Загрузка списка версий…" : "Выберите версию.";
-        else if (account is null) block = "Войдите в аккаунт Microsoft на вкладке «Аккаунты».";
+        else if (account is null) block = "Создайте офлайн-аккаунт или войдите через Microsoft на вкладке «Аккаунты».";
         PlayBlockReason = block;
 
         PlayText = _shell.IsGameRunning ? "Игра запущена"
             : Operation.IsActive ? "Подождите…"
             : version is { IsInstalled: false } && !OfflineMode ? "Установить и играть"
-            : account is { OwnsGame: false } ? "Играть (демо)"
+            : account is { IsLocal: false, OwnsGame: false } ? "Играть (демо)"
             : "Играть";
 
         PlayNote = version is null ? null

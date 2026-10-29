@@ -6,7 +6,7 @@ using UltraLauncher.Core.Logging;
 
 namespace UltraLauncher.Core.Auth;
 
-/// <summary>Сохранённый аккаунт Microsoft. Токен Minecraft — секрет, хранится только в зашифрованном файле.</summary>
+/// <summary>Сохранённый Microsoft-аккаунт или локальный профиль. Токены хранятся только в зашифрованном файле.</summary>
 public sealed class StoredAccount
 {
     /// <summary>Идентификатор аккаунта MSAL (HomeAccountId).</summary>
@@ -14,6 +14,8 @@ public sealed class StoredAccount
     public string? MicrosoftUsername { get; set; }
     public string? MinecraftName { get; set; }
     public string? MinecraftUuid { get; set; }
+    /// <summary>Локальный профиль без авторизации Microsoft; не подтверждает покупку игры.</summary>
+    public bool IsLocal { get; set; }
     public bool OwnsGame { get; set; }
     /// <summary>Когда последний раз онлайн подтверждено право на игру.</summary>
     public DateTime? OwnershipVerifiedUtc { get; set; }
