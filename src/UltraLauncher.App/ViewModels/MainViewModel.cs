@@ -89,7 +89,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var a = _core.Accounts.Find(_core.Settings.Current.SelectedAccountId);
         SidebarAccount = a?.DisplayName ?? "Нет аккаунта";
-        SidebarAccountStatus = a is null ? "Войдите через Microsoft" : a.OwnsGame ? "Лицензия" : "Демо";
+        SidebarAccountStatus = a is null ? "Добавьте аккаунт" : a.IsLocal ? "Офлайн-аккаунт" : a.OwnsGame ? "Лицензия" : "Демо";
         Home.Reevaluate();
     }
 

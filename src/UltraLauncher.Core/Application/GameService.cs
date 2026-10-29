@@ -194,7 +194,7 @@ public sealed class GameService
 
         // Аккаунт проверяем до загрузок, чтобы не качать гигабайты без возможности запуска.
         if (_accounts.Find(settings.SelectedAccountId) is null)
-            throw new LauncherException(ErrorCode.AccountRequired, "Для запуска нужен аккаунт Microsoft.", "Войдите на вкладке «Аккаунты».");
+            throw new LauncherException(ErrorCode.AccountRequired, "Для запуска нужен аккаунт.", "Создайте офлайн-аккаунт или войдите через Microsoft на вкладке «Аккаунты».");
 
         InstallPlan plan;
         if (offline)

@@ -9,6 +9,22 @@
             <TextBlock Style="{StaticResource MutedText}" Margin="0,0,0,20"
                        Text="Вход выполняется на официальной странице Microsoft в вашем браузере. UltraLauncher не видит и не запрашивает пароль. Токены хранятся в зашифрованном виде (Windows DPAPI) и не попадают в журналы." />
 
+            <!-- Независимо от входа Microsoft и наличия Client ID -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Создать офлайн-аккаунт" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="Для локального профиля нужен только ник. Вход Microsoft и Client ID не требуются. Realms и серверы с проверкой лицензии недоступны. Для первой установки игры и Java нужен интернет."
+                               Style="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <TextBox Text="{Binding LocalName, UpdateSourceTrigger=PropertyChanged}" MaxLength="16" Width="220"
+                                 VerticalAlignment="Center" AutomationProperties.Name="Ник офлайн-аккаунта" Margin="0,0,12,0" />
+                        <Button Content="Создать офлайн-аккаунт" Command="{Binding CreateLocalAccountCommand}"
+                                Style="{StaticResource PrimaryButton}" ToolTip="{Binding LocalNameHint}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding LocalNameHint}" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
             <!-- Не настроен Client ID -->
             <Border Style="{StaticResource Card}" Background="{StaticResource WarningBgBrush}" BorderBrush="#5C4A24"
                     Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
@@ -106,6 +122,7 @@
                                                     Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
                                             <Button Command="{Binding DataContext.RefreshCommand, ElementName=Page}" CommandParameter="{Binding}" Margin="0,0,8,0"
                                                     ToolTip="Проверить аккаунт онлайн: обновить сессию и наличие игры" AutomationProperties.Name="Проверить аккаунт"
+                                                    Visibility="{Binding CanRefresh, Converter={StaticResource BoolToVis}}"
                                                     IsEnabled="{Binding DataContext.IsBusy, ElementName=Page, Converter={StaticResource Not}}">
                                                 <Path Data="{StaticResource IconRefresh}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="Uniform" />
                                             </Button>
@@ -125,7 +142,7 @@
                 <StackPanel>
                     <TextBlock Text="Офлайн-режим" Style="{StaticResource SectionTitle}" />
                     <TextBlock Style="{StaticResource MutedText}"
-                               Text="Без интернета можно запустить только полностью установленную версию и только с аккаунтом, у которого ранее онлайн была подтверждена покупка Minecraft. Локальные «пиратские» профили не создаются. Мультиплеер, Realms и загрузка скинов офлайн недоступны." />
+                               Text="Без интернета можно запустить полностью установленную версию с локальным офлайн-аккаунтом или Microsoft-аккаунтом с ранее подтверждённой покупкой Minecraft. Подходящая Java также должна быть установлена. Офлайн-профиль не предоставляет доступ к Realms и серверам с проверкой лицензии." />
                 </StackPanel>
             </Border>
         </StackPanel>

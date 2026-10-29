@@ -16,9 +16,10 @@ public sealed class AccountRow
     public string Name => Account.DisplayName;
     public string Initial => string.IsNullOrEmpty(Name) ? "?" : Name[..1].ToUpperInvariant();
     public string? MicrosoftUser => Account.MicrosoftUsername;
-    public bool IsLicensed => Account.OwnsGame;
-    public string StatusText => Account.OwnsGame ? "Лицензия подтверждена" : "Игра не куплена — только демо";
-    public string OfflineText => Account.OwnsGame
+    public bool IsLicensed => !Account.IsLocal && Account.OwnsGame;
+    public bool CanRefresh => !Account.IsLocal;
+    public string StatusText => Account.IsLocal ? "Офлайн-аккаунт — без Microsoft" : Account.OwnsGame ? "Лицензия подтверждена" : "Игра не куплена — только демо";
+    public string OfflineText => Account.IsLocal ? "Для игры без сети сначала установите нужную версию и Java." : Account.OwnsGame
         ? $"Офлайн-запуск доступен (лицензия проверена {Account.OwnershipVerifiedUtc?.ToLocalTime():dd.MM.yyyy HH:mm})"
         : "Офлайн-запуск недоступен";
     public string SessionText => Account.MinecraftTokenExpiresAt is { } exp
@@ -40,6 +41,36 @@ public sealed partial class AccountsViewModel : ObservableObject
     }
 
     public ObservableCollection<AccountRow> Accounts { get; } = [];
+
+    [ObservableProperty] private string _localName = "";
+
+    public string LocalNameHint => string.IsNullOrWhiteSpace(LocalName)
+        ? "Введите ник: 3–16 латинских букв, цифр или символов _."
+        : AccountService.IsValidLocalName(LocalName) ? "" : "Ник должен содержать 3–16 латинских букв, цифр или символов _.";
+
+    partial void OnLocalNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(LocalNameHint));
+        CreateLocalAccountCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanCreateLocalAccount() => AccountService.IsValidLocalName(LocalName);
+
+    [RelayCommand(CanExecute = nameof(CanCreateLocalAccount))]
+    private void CreateLocalAccount()
+    {
+        try
+        {
+            var account = _core.Accounts.CreateLocalAccount(LocalName);
+            _core.Settings.Update(s => s.SelectedAccountId = account.Id);
+            LocalName = "";
+            Load();
+            _shell.RefreshAccounts();
+            _shell.Notifications.Show(NoticeKind.Success, $"Офлайн-аккаунт {account.DisplayName} выбран.",
+                "Вход Microsoft не нужен. Realms и серверы с проверкой лицензии недоступны.");
+        }
+        catch (Exception ex) { _shell.Notifications.ShowError(ex); }
+    }
 
     [ObservableProperty] private bool _isConfigured;
     [ObservableProperty] private bool _isSigningIn;
@@ -109,7 +140,7 @@ public sealed partial class AccountsViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshAsync(AccountRow? row)
     {
-        if (row is null || IsBusy) return;
+        if (row is null || !row.CanRefresh || IsBusy) return;
         IsBusy = true;
         try
         {
